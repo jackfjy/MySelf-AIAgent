@@ -1,8 +1,8 @@
 import argparse
 
 from .config import get_settings
-from .llm_client import LLMClient, LLMInput
-from .agent_nodes import research_node
+from .graph_builder import build_content_graph
+from .llm_client import LLMClient
 
 
 def main() -> None:
@@ -19,9 +19,16 @@ def main() -> None:
         deepseek_base_url=settings.deepseek_base_url,
     )
 
-    # Step 2: 先只跑 Research 单节点
-    research_summary = research_node(args.topic, llm)
-    print(research_summary)
+    graph = build_content_graph(llm)
+    result = graph.invoke(
+        {
+            "topic": args.topic,
+            "research_summary": "",
+            "draft": "",
+            "final_text": "",
+        }
+    )
+    print(result["final_text"])
 
 
 if __name__ == "__main__":

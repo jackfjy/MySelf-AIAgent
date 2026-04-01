@@ -1,5 +1,5 @@
 from .llm_client import LLMInput, LLMOutput
-from .prompts import RESEARCH_PROMPT
+from .prompts import EDITOR_PROMPT, RESEARCH_PROMPT, WRITER_PROMPT
 
 
 def research_node(topic: str, llm) -> str:
@@ -9,15 +9,13 @@ def research_node(topic: str, llm) -> str:
 
 
 def writer_node(topic: str, research_summary: str, llm) -> str:
-    """
-    Step 3: Writer 节点（占位）。
-    """
-    raise NotImplementedError("writer_node not implemented yet")
+    prompt = WRITER_PROMPT.format(topic=topic, research_summary=research_summary)
+    out: LLMOutput = llm.invoke(LLMInput(prompt=prompt))
+    return out.text
 
 
 def editor_node(topic: str, draft: str, llm) -> str:
-    """
-    Step 4: Editor 节点（占位）。
-    """
-    raise NotImplementedError("editor_node not implemented yet")
+    prompt = EDITOR_PROMPT.format(topic=topic, draft=draft)
+    out: LLMOutput = llm.invoke(LLMInput(prompt=prompt))
+    return out.text
 

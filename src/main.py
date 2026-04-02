@@ -24,6 +24,7 @@ def main() -> None:
         provider=settings.provider,
         model_name=settings.model_name,
         openai_api_key=settings.openai_api_key,
+        openai_base_url=settings.openai_base_url,
         openai_http_proxy=settings.openai_http_proxy,
         deepseek_api_key=settings.deepseek_api_key,
         deepseek_base_url=settings.deepseek_base_url,

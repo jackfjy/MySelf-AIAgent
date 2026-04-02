@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import httpx
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
@@ -25,6 +26,7 @@ class LLMClient:
         provider: str,
         model_name: str,
         openai_api_key: str | None = None,
+        openai_http_proxy: str | None = None,
         deepseek_api_key: str | None = None,
         deepseek_base_url: str | None = None,
         temperature: float = 0.7,
@@ -47,12 +49,20 @@ class LLMClient:
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
-        self._llm = ChatOpenAI(
-            model=self.model_name,
-            api_key=api_key,
-            base_url=base_url,
-            temperature=temperature,
-        )
+        http_client: httpx.Client | None = None
+        if self.provider == "openai" and openai_http_proxy:
+            http_client = httpx.Client(proxy=openai_http_proxy.strip())
+
+        llm_kwargs: dict = {
+            "model": self.model_name,
+            "api_key": api_key,
+            "base_url": base_url,
+            "temperature": temperature,
+        }
+        if http_client is not None:
+            llm_kwargs["http_client"] = http_client
+
+        self._llm = ChatOpenAI(**llm_kwargs)
 
     def invoke(self, llm_input: LLMInput) -> LLMOutput:
         resp = self._llm.invoke([HumanMessage(content=llm_input.prompt)])

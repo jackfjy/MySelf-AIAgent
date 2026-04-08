@@ -4,15 +4,7 @@ import httpx
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
-
-def _normalize_http_proxy_url(url: str) -> str:
-    """
-    本地 HTTP 代理应使用 http://127.0.0.1:端口；误写 https://127.0.0.1 时部分环境会 CONNECT 失败。
-    """
-    u = url.strip()
-    if u.startswith("https://127.0.0.1") or u.startswith("https://localhost"):
-        return "http://" + u[len("https://") :]
-    return u
+from .http_utils import normalize_http_proxy_url
 
 
 @dataclass(frozen=True)
@@ -63,7 +55,7 @@ class LLMClient:
 
         http_client: httpx.Client | None = None
         if self.provider == "openai" and openai_http_proxy:
-            proxy_url = _normalize_http_proxy_url(openai_http_proxy)
+            proxy_url = normalize_http_proxy_url(openai_http_proxy)
             http_client = httpx.Client(
                 proxy=proxy_url,
                 timeout=httpx.Timeout(120.0),

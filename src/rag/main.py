@@ -27,6 +27,32 @@ def main() -> None:
     p = argparse.ArgumentParser(description="知识库问答（RAG）")
     p.add_argument("--question", "-q", required=True, help="用户问题")
     p.add_argument("--top-k", type=int, default=4, help="检索片段数")
+    p.add_argument("--thread-id", type=str, default="default", help="会话 id（相同 id 共享记忆）")
+    p.add_argument(
+        "--source-contains",
+        type=str,
+        default="",
+        help="仅检索 source 含该子串的文档片段（例如 sample.md / hr/ / handbook）",
+    )
+    p.add_argument("--rerank", action="store_true", help="开启 LLM rerank（会额外调用一次模型）")
+    p.add_argument("--rerank-keep", type=int, default=4, help="rerank 最终保留片段数")
+    qg = p.add_mutually_exclusive_group()
+    qg.add_argument(
+        "--rewrite",
+        action="store_true",
+        help="查询改写：用 LLM 生成一条更适合检索的 query（额外 1 次模型调用）",
+    )
+    qg.add_argument(
+        "--multi-query",
+        action="store_true",
+        help="多查询扩展：用 LLM 生成多条检索 query 分别检索后合并（额外 1 次模型调用）",
+    )
+    p.add_argument(
+        "--multi-query-n",
+        type=int,
+        default=3,
+        help="与 --multi-query 配合：生成几条检索 query（2-6）",
+    )
     args = p.parse_args()
 
     settings = get_settings()
@@ -42,15 +68,36 @@ def main() -> None:
     emb = build_openai_embeddings()
     kb_dir = os.getenv("KB_DATA_DIR", "data/kb").strip()
     store = SimpleVectorStore(emb, _ROOT / kb_dir)
-    graph = build_rag_graph(llm, store, top_k=args.top_k)
+    graph = build_rag_graph(
+        llm,
+        store,
+        top_k=args.top_k,
+        multi_query_n=max(2, min(int(args.multi_query_n), 6)),
+    )
     out = graph.invoke(
         {
             "question": args.question,
+            "history": [],
+            "source_contains": args.source_contains,
+            "rewrite_enabled": bool(args.rewrite),
+            "multi_query_enabled": bool(args.multi_query),
+            "retrieval_queries": [],
+            "rerank_enabled": bool(args.rerank),
+            "rerank_keep": int(args.rerank_keep),
+            "candidates": [],
             "retrieved_context": "",
+            "reranked_context": "",
             "citations": "",
             "answer": "",
         }
+        ,
+        config={"configurable": {"thread_id": args.thread_id}},
     )
+    rq = out.get("retrieval_queries") or []
+    if rq:
+        print("--- 检索 query ---")
+        for i, q in enumerate(rq, start=1):
+            print(f"{i}. {q}")
     print("--- 引用 ---")
     print(out.get("citations") or "(无)")
     print("--- 回答 ---")

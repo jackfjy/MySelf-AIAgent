@@ -6,6 +6,32 @@ from typing import Any
 
 import numpy as np
 from langchain_openai import OpenAIEmbeddings
+from rank_bm25 import BM25Okapi
+
+
+def _simple_tokenize(text: str) -> list[str]:
+    """
+    MVP tokenizer：英文按词，中文按字符（极简可用版）。
+    企业场景建议后续替换为更合理的分词（如 jieba / 业务词典）。
+    """
+    s = (text or "").strip().lower()
+    if not s:
+        return []
+    # 如果包含中文，退化为按字符（跳过空白）
+    if any("\u4e00" <= ch <= "\u9fff" for ch in s):
+        return [ch for ch in s if not ch.isspace()]
+    out: list[str] = []
+    buf: list[str] = []
+    for ch in s:
+        if ch.isalnum() or ch in {"_", "-"}:
+            buf.append(ch)
+        else:
+            if buf:
+                out.append("".join(buf))
+                buf = []
+    if buf:
+        out.append("".join(buf))
+    return out
 
 
 class SimpleVectorStore:
@@ -83,15 +109,83 @@ class SimpleVectorStore:
         self._save()
 
     def similarity_search(
-        self, query: str, k: int = 4
+        self,
+        query: str,
+        k: int = 4,
+        *,
+        source_contains: str | None = None,
     ) -> list[tuple[dict[str, Any], float]]:
         if not self._chunks or self._emb is None:
             return []
-        k = min(k, len(self._chunks))
+
+        # 先做轻量元数据过滤（MVP：仅支持 source 子串匹配）
+        indices = list(range(len(self._chunks)))
+        if source_contains:
+            s = source_contains.strip().lower()
+            if s:
+                indices = [
+                    i
+                    for i in indices
+                    if s
+                    in str((self._chunks[i].get("metadata") or {}).get("source", "")).lower()
+                ]
+
+        if not indices:
+            return []
+
+        k = min(k, len(indices))
         q_vec = np.asarray(self.embeddings.embed_query(query), dtype=np.float32)
-        emb = self._emb
+
+        emb = self._emb[indices]
         emb_norm = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-10)
         q_norm = q_vec / (np.linalg.norm(q_vec) + 1e-10)
         scores = emb_norm @ q_norm
-        top_idx = np.argsort(-scores)[:k]
-        return [(self._chunks[int(i)], float(scores[i])) for i in top_idx]
+
+        local_top = np.argsort(-scores)[:k]
+        out: list[tuple[dict[str, Any], float]] = []
+        for local_i in local_top:
+            gi = indices[int(local_i)]
+            out.append((self._chunks[gi], float(scores[int(local_i)])))
+        return out
+
+    def bm25_search(
+        self,
+        query: str,
+        k: int = 4,
+        *,
+        source_contains: str | None = None,
+    ) -> list[tuple[dict[str, Any], float]]:
+        """
+        MVP：BM25 关键词检索（与向量检索互补）。
+        注意：此实现每次查询都会构建 BM25（简单但不够快），后续可做索引缓存/持久化。
+        """
+        if not self._chunks:
+            return []
+
+        indices = list(range(len(self._chunks)))
+        if source_contains:
+            s = source_contains.strip().lower()
+            if s:
+                indices = [
+                    i
+                    for i in indices
+                    if s
+                    in str((self._chunks[i].get("metadata") or {}).get("source", "")).lower()
+                ]
+        if not indices:
+            return []
+
+        corpus = [_simple_tokenize(self._chunks[i].get("text", "")) for i in indices]
+        bm25 = BM25Okapi(corpus)
+        q_tokens = _simple_tokenize(query)
+        if not q_tokens:
+            return []
+        scores = bm25.get_scores(q_tokens)
+        k = min(k, len(indices))
+        local_top = np.argsort(-scores)[:k]
+
+        out: list[tuple[dict[str, Any], float]] = []
+        for local_i in local_top:
+            gi = indices[int(local_i)]
+            out.append((self._chunks[gi], float(scores[int(local_i)])))
+        return out

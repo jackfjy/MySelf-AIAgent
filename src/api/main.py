@@ -19,6 +19,7 @@ from src.graph_builder import build_content_graph
 from src.llm_client import LLMClient
 from src.rag.embeddings import build_openai_embeddings
 from src.rag.vector_store import SimpleVectorStore
+from src.services.upload_history import UploadHistory
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -39,7 +40,9 @@ async def lifespan(app: FastAPI):
     app.state.content_graph = build_content_graph(llm)
     app.state.embeddings = build_openai_embeddings()
     kb_dir = os.getenv("KB_DATA_DIR", "data/kb").strip()
-    app.state.vector_store = SimpleVectorStore(app.state.embeddings, _PROJECT_ROOT / kb_dir)
+    persist = _PROJECT_ROOT / kb_dir
+    app.state.vector_store = SimpleVectorStore(app.state.embeddings, persist)
+    app.state.upload_history = UploadHistory(persist)
     yield
 
 
@@ -80,4 +83,6 @@ def root():
         "content_generate": "POST /api/v1/content/generate",
         "rag_query": "POST /api/v1/rag/query",
         "rag_ingest": "POST /api/v1/rag/ingest",
+        "rag_uploads": "GET /api/v1/rag/uploads",
+        "rag_reingest": "POST /api/v1/rag/reingest",
     }

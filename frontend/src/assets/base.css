@@ -1,0 +1,29 @@
+/* 全局基底：与 App 内 CSS 变量一致 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    system-ui,
+    sans-serif;
+  color: #1e293b;
+  background: #f1f5f9;
+}

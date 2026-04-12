@@ -34,3 +34,11 @@ class RagQueryResponse(BaseModel):
     retrieval_queries: list[str] = Field(default_factory=list)
     citations: str = ""
     answer: str
+
+
+class RagReingestRequest(BaseModel):
+    """从已保存的上传记录再次入库。"""
+
+    ids: list[str] = Field(..., min_length=1, max_length=30)
+    clear: bool = False
+    max_chars: int = Field(800, ge=200, le=4000)

@@ -13,24 +13,8 @@ from pathlib import Path
 
 from ..config import get_settings
 from .embeddings import build_openai_embeddings
+from .ingest_utils import chunk_text
 from .vector_store import SimpleVectorStore
-
-
-def _chunk_text(text: str, max_chars: int = 800, overlap: int = 100) -> list[str]:
-    text = text.strip()
-    if not text:
-        return []
-    if len(text) <= max_chars:
-        return [text]
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        end = min(start + max_chars, len(text))
-        chunks.append(text[start:end])
-        if end >= len(text):
-            break
-        start = max(start + 1, end - overlap)
-    return chunks
 
 
 def _read_file(path: Path) -> str:
@@ -82,7 +66,7 @@ def main() -> None:
     for fp in sorted(files):
         rel = str(fp.relative_to(docs_dir))
         raw = _read_file(fp)
-        pieces = _chunk_text(raw, max_chars=args.max_chars)
+        pieces = chunk_text(raw, max_chars=args.max_chars)
         texts = pieces
         metas = [{"source": rel, "path": str(fp)} for _ in texts]
         store.add_texts(texts, metas)

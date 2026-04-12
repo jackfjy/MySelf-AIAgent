@@ -12,6 +12,7 @@ if str(_ROOT) not in sys.path:
 from src.config import get_settings
 from src.graph_builder import build_content_graph
 from src.llm_client import LLMClient
+from src.services.content_service import run_content_generation
 
 
 def main() -> None:
@@ -31,14 +32,7 @@ def main() -> None:
     )
 
     graph = build_content_graph(llm)
-    result = graph.invoke(
-        {
-            "topic": args.topic,
-            "research_summary": "",
-            "draft": "",
-            "final_text": "",
-        }
-    )
+    result = run_content_generation(llm, graph, args.topic)
     print(result["final_text"])
 
 

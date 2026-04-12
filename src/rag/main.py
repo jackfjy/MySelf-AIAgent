@@ -19,8 +19,8 @@ if str(_ROOT) not in sys.path:
 from src.config import get_settings
 from src.llm_client import LLMClient
 from src.rag.embeddings import build_openai_embeddings
-from src.rag.graph_builder import build_rag_graph
 from src.rag.vector_store import SimpleVectorStore
+from src.services.rag_service import run_rag_query
 
 
 def main() -> None:
@@ -68,30 +68,18 @@ def main() -> None:
     emb = build_openai_embeddings()
     kb_dir = os.getenv("KB_DATA_DIR", "data/kb").strip()
     store = SimpleVectorStore(emb, _ROOT / kb_dir)
-    graph = build_rag_graph(
+    out = run_rag_query(
         llm,
         store,
+        question=args.question,
         top_k=args.top_k,
-        multi_query_n=max(2, min(int(args.multi_query_n), 6)),
-    )
-    out = graph.invoke(
-        {
-            "question": args.question,
-            "history": [],
-            "source_contains": args.source_contains,
-            "rewrite_enabled": bool(args.rewrite),
-            "multi_query_enabled": bool(args.multi_query),
-            "retrieval_queries": [],
-            "rerank_enabled": bool(args.rerank),
-            "rerank_keep": int(args.rerank_keep),
-            "candidates": [],
-            "retrieved_context": "",
-            "reranked_context": "",
-            "citations": "",
-            "answer": "",
-        }
-        ,
-        config={"configurable": {"thread_id": args.thread_id}},
+        thread_id=args.thread_id,
+        source_contains=args.source_contains,
+        rewrite=bool(args.rewrite),
+        multi_query=bool(args.multi_query),
+        multi_query_n=int(args.multi_query_n),
+        rerank=bool(args.rerank),
+        rerank_keep=int(args.rerank_keep),
     )
     rq = out.get("retrieval_queries") or []
     if rq:

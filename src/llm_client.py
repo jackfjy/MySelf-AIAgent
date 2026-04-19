@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import httpx
+from typing import List, Dict
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
@@ -24,6 +25,11 @@ class LLMInput:
 class LLMOutput:
     text: str
 
+# 用于输出 fact_checker 和 reviewer 的 JSON 格式的 LLM 响应，包含 status, issues, revised_text
+class LLMOutputJSON(LLMOutput):
+    status: str
+    issues: List[Dict[str, str]]
+    revised_text: str
 
 class LLMClient:
     """

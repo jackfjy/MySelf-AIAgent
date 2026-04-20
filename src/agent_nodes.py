@@ -1,4 +1,3 @@
-from urllib3 import response
 from .llm_client import LLMInput, LLMOutput, LLMOutputJSON
 from .prompts import EDITOR_PROMPT, FACT_CHECKER_PROMPT, RESEARCH_PROMPT, WRITER_PROMPT, REVIEWER_PROMPT
 from .logger import log_node
@@ -30,10 +29,12 @@ def fact_checker_node(topic: str, research_summary: str, draft: str, llm) -> str
     if text.startswith("```json"):
         text = text[7:-3].strip()
     result = json.loads(text)
-    LLMOutputJSON.status = result["status"]
-    LLMOutputJSON.issues = result["issues"]
-    LLMOutputJSON.text = result["revised_text"]
-    return LLMOutputJSON
+    return LLMOutputJSON(
+        text=response.text,
+        status=result["status"], 
+        issues=result["issues"], 
+        revised_text=result["revised_text"]
+        ) 
 
 # @log_node("reviewer_node")
 def reviewer_node(topic: str, final_text: str, llm) -> str:
@@ -43,7 +44,9 @@ def reviewer_node(topic: str, final_text: str, llm) -> str:
     if text.startswith("```json"):
         text = text[7:-3].strip()
     result = json.loads(text)
-    LLMOutputJSON.status = result["status"]
-    LLMOutputJSON.issues = result["issues"]
-    LLMOutputJSON.text = result["revised_text"]
-    return LLMOutputJSON
+    return LLMOutputJSON(
+        text=response.text,
+        status=result["status"], 
+        issues=result["issues"], 
+        revised_text=result["revised_text"]
+        ) 

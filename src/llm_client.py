@@ -26,6 +26,7 @@ class LLMOutput:
     text: str
 
 # 用于输出 fact_checker 和 reviewer 的 JSON 格式的 LLM 响应，包含 status, issues, revised_text
+@dataclass(frozen=True)
 class LLMOutputJSON(LLMOutput):
     status: str
     issues: List[Dict[str, str]]

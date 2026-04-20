@@ -42,7 +42,7 @@ def build_content_graph(llm):
 
     def editor(state: AgentState):
         return {
-            "final_text": editor_node(state["topic"], state["revised_draft"], llm),
+            "final_text": editor_node(state["topic"], state["revised_draft"] or state["draft"], llm),
         }
 
     def fact_checker(state: AgentState):
@@ -50,7 +50,7 @@ def build_content_graph(llm):
         return {
             "fact_check_status": result.status,
             "fact_check_report": result.issues,
-            "revised_draft": result.text
+            "revised_draft": result.revised_text
         }
 
 
@@ -59,7 +59,7 @@ def build_content_graph(llm):
         return {
             "review_status": result.status,
             "review_issues": result.issues,
-            "revised_final": result.text
+            "revised_final": result.revised_text
         }
 
     g = StateGraph(AgentState)
